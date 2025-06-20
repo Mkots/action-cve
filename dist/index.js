@@ -102,7 +102,101 @@ __exportStar(__nccwpck_require__(4884), exports);
 __exportStar(__nccwpck_require__(5873), exports);
 __exportStar(__nccwpck_require__(1531), exports);
 __exportStar(__nccwpck_require__(4124), exports);
+__exportStar(__nccwpck_require__(5850), exports);
 //# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 5850:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.sendAlertsToMattermost = exports.validateMattermostWebhookUrl = exports.MAX_COUNT_MATTERMOST = void 0;
+const utils_1 = __nccwpck_require__(1750);
+const constants_1 = __nccwpck_require__(8729);
+const entities_1 = __nccwpck_require__(314);
+exports.MAX_COUNT_MATTERMOST = 30;
+const createMaxAlertsMarkdownNotice = () => `*Note:* Only ${exports.MAX_COUNT_MATTERMOST} have been sent due to message length restrictions.`;
+const colorMap = {
+    CRITICAL: 'danger',
+    HIGH: 'danger',
+    MEDIUM: 'warning',
+    LOW: 'good',
+    UNKNOWN: 'default'
+};
+const createAlertAttachment = (alert) => ({
+    color: colorMap[alert.advisory?.severity?.toUpperCase() || 'UNKNOWN'],
+    title: `${alert.packageName} - ${alert.advisory?.severity?.toUpperCase()} Severity`,
+    fields: [
+        {
+            title: 'Package',
+            value: alert.packageName,
+            short: true
+        },
+        {
+            title: 'Repository',
+            value: (0, entities_1.getFullRepositoryNameFromAlert)(alert),
+            short: true
+        },
+        {
+            title: 'Vulnerability Version Range',
+            value: alert.vulnerability?.vulnerableVersionRange || 'N/A',
+            short: true
+        },
+        {
+            title: 'Patched Version',
+            value: alert.vulnerability?.firstPatchedVersion || 'N/A',
+            short: true
+        },
+        {
+            title: 'Severity',
+            value: alert.advisory?.severity || 'Unknown',
+            short: true
+        },
+        {
+            title: 'Summary',
+            value: alert.advisory?.summary || 'No summary available',
+            short: false
+        }
+    ],
+    actions: alert.advisory?.url ? [{
+            type: 'button',
+            name: 'View Advisory',
+            integration: {
+                url: alert.advisory.url,
+                context: {}
+            }
+        }] : undefined
+});
+const validateMattermostWebhookUrl = (url) => {
+    const regexPattern = /^https:\/\/[^/]+\/hooks\/[a-zA-Z0-9]+$/;
+    return regexPattern.test(url);
+};
+exports.validateMattermostWebhookUrl = validateMattermostWebhookUrl;
+const sendAlertsToMattermost = async (webhookUrl, alerts) => {
+    const alertCount = alerts.length;
+    const repositoryOwner = alerts[0].repository.owner;
+    const repositoryName = alerts[0].repository.name;
+    const limitedAlerts = alerts.slice(0, exports.MAX_COUNT_MATTERMOST);
+    const attachments = limitedAlerts.map(createAlertAttachment);
+    const message = {
+        text: `You have ${alertCount} vulnerabilities in **${repositoryOwner}/${repositoryName}**.${alertCount > exports.MAX_COUNT_MATTERMOST ? `\n${createMaxAlertsMarkdownNotice()}` : ''}`,
+        username: constants_1.ACTION_SHORT_SUMMARY,
+        icon_url: constants_1.ACTION_ICON,
+        attachments
+    };
+    await (0, utils_1.request)(webhookUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message)
+    });
+};
+exports.sendAlertsToMattermost = sendAlertsToMattermost;
+//# sourceMappingURL=mattermost.js.map
 
 /***/ }),
 
@@ -108311,6 +108405,7 @@ async function run() {
         const enterprise = (0, core_1.getInput)('enterprise');
         const microsoftTeamsWebhookUrl = (0, core_1.getInput)('microsoft_teams_webhook');
         const slackWebhookUrl = (0, core_1.getInput)('slack_webhook');
+        const mattermostWebhookUrl = (0, core_1.getInput)('mattermost_webhook');
         const pagerDutyIntegrationKey = (0, core_1.getInput)('pager_duty_integration_key');
         const zenDutyApiKey = (0, core_1.getInput)('zenduty_api_key');
         const zenDutyServiceId = (0, core_1.getInput)('zenduty_service_id');
@@ -108346,6 +108441,14 @@ async function run() {
                 }
                 else {
                     await (0, destinations_1.sendAlertsToSlack)(slackWebhookUrl, alerts);
+                }
+            }
+            if (mattermostWebhookUrl) {
+                if (!(0, destinations_1.validateMattermostWebhookUrl)(mattermostWebhookUrl)) {
+                    (0, core_1.setFailed)(new Error('Invalid Mattermost Webhook URL'));
+                }
+                else {
+                    await (0, destinations_1.sendAlertsToMattermost)(mattermostWebhookUrl, alerts);
                 }
             }
             if (pagerDutyIntegrationKey) {
