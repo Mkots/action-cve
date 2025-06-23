@@ -1,6 +1,152 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 387:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.fetchEnterpriseAlerts = void 0;
+const rest_1 = __nccwpck_require__(5772);
+const entities_1 = __nccwpck_require__(314);
+const filters_1 = __nccwpck_require__(5857);
+const fetchEnterpriseAlerts = async (gitHubPersonalAccessToken, enterprise, severity, ecosystem, ignorePackages, count) => {
+    const octokit = new rest_1.Octokit({
+        auth: gitHubPersonalAccessToken,
+        request: {
+            fetch,
+        },
+    });
+    const response = await octokit.dependabot.listAlertsForEnterprise({
+        enterprise,
+        state: 'open',
+        severity,
+        ecosystem: ecosystem.length > 0 ? ecosystem : undefined,
+        per_page: count,
+    });
+    return response.data
+        .filter((dependabotAlert) => (0, filters_1.filterPackages)(dependabotAlert, ignorePackages))
+        .map(entities_1.toEnterpriseAlert);
+};
+exports.fetchEnterpriseAlerts = fetchEnterpriseAlerts;
+//# sourceMappingURL=enterprise.js.map
+
+/***/ }),
+
+/***/ 5857:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.filterPackages = filterPackages;
+/**
+ * Filters Dependabot alerts based on ignored packages and CVEs.
+ *
+ * @param dependabotAlert - The Dependabot alert to be filtered. Can be a DependabotAlert, DependabotOrgAlert, or DependabotEnterpriseAlert.
+ * @param ignorePackages - A map of package names to ignore, potentially with associated CVEs.
+ * @returns A boolean indicating whether the alert should be included (true) or filtered out (false).
+ */
+function filterPackages(dependabotAlert, ignorePackages) {
+    const packageCve = ignorePackages[dependabotAlert.security_vulnerability.package.name];
+    if (!packageCve)
+        return true;
+    if (packageCve.length === 0)
+        return false;
+    if (dependabotAlert.security_advisory.cve_id &&
+        packageCve.includes(dependabotAlert.security_advisory.cve_id))
+        return false;
+    return true;
+}
+//# sourceMappingURL=filters.js.map
+
+/***/ }),
+
+/***/ 9414:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.fetchRepositoryAlerts = exports.fetchEnterpriseAlerts = exports.fetchOrgAlerts = void 0;
+var org_1 = __nccwpck_require__(2336);
+Object.defineProperty(exports, "fetchOrgAlerts", ({ enumerable: true, get: function () { return org_1.fetchOrgAlerts; } }));
+var enterprise_1 = __nccwpck_require__(387);
+Object.defineProperty(exports, "fetchEnterpriseAlerts", ({ enumerable: true, get: function () { return enterprise_1.fetchEnterpriseAlerts; } }));
+var repository_1 = __nccwpck_require__(5720);
+Object.defineProperty(exports, "fetchRepositoryAlerts", ({ enumerable: true, get: function () { return repository_1.fetchRepositoryAlerts; } }));
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 2336:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.fetchOrgAlerts = void 0;
+const rest_1 = __nccwpck_require__(5772);
+const entities_1 = __nccwpck_require__(314);
+const filters_1 = __nccwpck_require__(5857);
+const fetchOrgAlerts = async (gitHubPersonalAccessToken, org, severity, ecosystem, ignorePackages, count) => {
+    const octokit = new rest_1.Octokit({
+        auth: gitHubPersonalAccessToken,
+        request: {
+            fetch,
+        },
+    });
+    const response = await octokit.dependabot.listAlertsForOrg({
+        org,
+        state: 'open',
+        severity,
+        ecosystem: ecosystem.length > 0 ? ecosystem : undefined,
+        per_page: count,
+    });
+    return response.data
+        .filter((dependabotAlert) => (0, filters_1.filterPackages)(dependabotAlert, ignorePackages))
+        .map(entities_1.toOrgAlert);
+};
+exports.fetchOrgAlerts = fetchOrgAlerts;
+//# sourceMappingURL=org.js.map
+
+/***/ }),
+
+/***/ 5720:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.fetchRepositoryAlerts = void 0;
+const rest_1 = __nccwpck_require__(5772);
+const entities_1 = __nccwpck_require__(314);
+const filters_1 = __nccwpck_require__(5857);
+const fetchRepositoryAlerts = async (gitHubPersonalAccessToken, repositoryName, repositoryOwner, severity, ecosystem, ignorePackages, count) => {
+    const octokit = new rest_1.Octokit({
+        auth: gitHubPersonalAccessToken,
+        request: {
+            fetch,
+        },
+    });
+    const response = await octokit.dependabot.listAlertsForRepo({
+        owner: repositoryOwner,
+        repo: repositoryName,
+        state: 'open',
+        severity,
+        ecosystem: ecosystem.length > 0 ? ecosystem : undefined,
+        per_page: count,
+    });
+    return response.data
+        .filter((dependabotAlert) => (0, filters_1.filterPackages)(dependabotAlert, ignorePackages))
+        .map((alert) => (0, entities_1.toRepositoryAlert)(alert, repositoryName, repositoryOwner));
+};
+exports.fetchRepositoryAlerts = fetchRepositoryAlerts;
+//# sourceMappingURL=repository.js.map
+
+/***/ }),
+
 /***/ 8729:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -124,7 +270,7 @@ const colorMap = {
     HIGH: 'danger',
     MEDIUM: 'warning',
     LOW: 'good',
-    UNKNOWN: 'default'
+    UNKNOWN: 'default',
 };
 const createAlertAttachment = (alert) => ({
     color: colorMap[alert.advisory?.severity?.toUpperCase() || 'UNKNOWN'],
@@ -133,42 +279,46 @@ const createAlertAttachment = (alert) => ({
         {
             title: 'Package',
             value: alert.packageName,
-            short: true
+            short: true,
         },
         {
             title: 'Repository',
             value: (0, entities_1.getFullRepositoryNameFromAlert)(alert),
-            short: true
+            short: true,
         },
         {
             title: 'Vulnerability Version Range',
             value: alert.vulnerability?.vulnerableVersionRange || 'N/A',
-            short: true
+            short: true,
         },
         {
             title: 'Patched Version',
             value: alert.vulnerability?.firstPatchedVersion || 'N/A',
-            short: true
+            short: true,
         },
         {
             title: 'Severity',
             value: alert.advisory?.severity || 'Unknown',
-            short: true
+            short: true,
         },
         {
             title: 'Summary',
             value: alert.advisory?.summary || 'No summary available',
-            short: false
-        }
+            short: false,
+        },
     ],
-    actions: alert.advisory?.url ? [{
-            type: 'button',
-            name: 'View Advisory',
-            integration: {
-                url: alert.advisory.url,
-                context: {}
-            }
-        }] : undefined
+    actions: alert.advisory?.url
+        ? [
+            {
+                type: 'button',
+                name: 'View Advisory',
+                integration: {
+                    url: alert.advisory.url,
+                    context: {},
+                },
+            },
+        ]
+        : undefined,
 });
 const validateMattermostWebhookUrl = (url) => {
     const regexPattern = /^https:\/\/[^/]+\/hooks\/[a-zA-Z0-9]+$/;
@@ -182,17 +332,19 @@ const sendAlertsToMattermost = async (webhookUrl, alerts) => {
     const limitedAlerts = alerts.slice(0, exports.MAX_COUNT_MATTERMOST);
     const attachments = limitedAlerts.map(createAlertAttachment);
     const message = {
-        text: `You have ${alertCount} vulnerabilities in **${repositoryOwner}/${repositoryName}**.${alertCount > exports.MAX_COUNT_MATTERMOST ? `\n${createMaxAlertsMarkdownNotice()}` : ''}`,
+        text: `You have ${alertCount} vulnerabilities in **${repositoryOwner}/${repositoryName}**.${alertCount > exports.MAX_COUNT_MATTERMOST
+            ? `\n${createMaxAlertsMarkdownNotice()}`
+            : ''}`,
         username: constants_1.ACTION_SHORT_SUMMARY,
         icon_url: constants_1.ACTION_ICON,
-        attachments
+        attachments,
     };
     await (0, utils_1.request)(webhookUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(message)
+        body: JSON.stringify(message),
     });
 };
 exports.sendAlertsToMattermost = sendAlertsToMattermost;
@@ -538,7 +690,18 @@ __exportStar(__nccwpck_require__(7596), exports);
 __exportStar(__nccwpck_require__(9323), exports);
 __exportStar(__nccwpck_require__(1660), exports);
 __exportStar(__nccwpck_require__(4336), exports);
+__exportStar(__nccwpck_require__(7091), exports);
 //# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 7091:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+//# sourceMappingURL=package-cve.js.map
 
 /***/ }),
 
@@ -568,74 +731,6 @@ const toVulnerability = (securityVulnerability) => ({
 });
 exports.toVulnerability = toVulnerability;
 //# sourceMappingURL=vulnerability.js.map
-
-/***/ }),
-
-/***/ 2382:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.fetchEnterpriseAlerts = exports.fetchOrgAlerts = exports.fetchRepositoryAlerts = void 0;
-const rest_1 = __nccwpck_require__(5772);
-const entities_1 = __nccwpck_require__(314);
-const fetchRepositoryAlerts = async (gitHubPersonalAccessToken, repositoryName, repositoryOwner, severity, ecosystem, count) => {
-    const octokit = new rest_1.Octokit({
-        auth: gitHubPersonalAccessToken,
-        request: {
-            fetch,
-        },
-    });
-    const response = await octokit.dependabot.listAlertsForRepo({
-        owner: repositoryOwner,
-        repo: repositoryName,
-        state: 'open',
-        severity,
-        ecosystem: ecosystem.length > 0 ? ecosystem : undefined,
-        per_page: count,
-    });
-    const alerts = response.data.map((dependabotAlert) => (0, entities_1.toRepositoryAlert)(dependabotAlert, repositoryName, repositoryOwner));
-    return alerts;
-};
-exports.fetchRepositoryAlerts = fetchRepositoryAlerts;
-const fetchOrgAlerts = async (gitHubPersonalAccessToken, org, severity, ecosystem, count) => {
-    const octokit = new rest_1.Octokit({
-        auth: gitHubPersonalAccessToken,
-        request: {
-            fetch,
-        },
-    });
-    const response = await octokit.dependabot.listAlertsForOrg({
-        org,
-        state: 'open',
-        severity,
-        ecosystem: ecosystem.length > 0 ? ecosystem : undefined,
-        per_page: count,
-    });
-    const alerts = response.data.map((dependabotOrgAlert) => (0, entities_1.toOrgAlert)(dependabotOrgAlert));
-    return alerts;
-};
-exports.fetchOrgAlerts = fetchOrgAlerts;
-const fetchEnterpriseAlerts = async (gitHubPersonalAccessToken, enterprise, severity, ecosystem, count) => {
-    const octokit = new rest_1.Octokit({
-        auth: gitHubPersonalAccessToken,
-        request: {
-            fetch,
-        },
-    });
-    const response = await octokit.dependabot.listAlertsForEnterprise({
-        enterprise,
-        state: 'open',
-        severity,
-        ecosystem: ecosystem.length > 0 ? ecosystem : undefined,
-        per_page: count,
-    });
-    const alerts = response.data.map((dependabotEnterpriseAlert) => (0, entities_1.toEnterpriseAlert)(dependabotEnterpriseAlert));
-    return alerts;
-};
-exports.fetchEnterpriseAlerts = fetchEnterpriseAlerts;
-//# sourceMappingURL=fetch-alerts.js.map
 
 /***/ }),
 
@@ -712,6 +807,34 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 __exportStar(__nccwpck_require__(1168), exports);
 __exportStar(__nccwpck_require__(6294), exports);
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 5980:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.parseIgnorePackages = parseIgnorePackages;
+/**
+ * Parse a comma-separated list of package names and their associated CVEs.
+ *
+ * @param {string} input "foo#CVE-2021-21291,foo#CVE-2021-21292,bar"
+ * @returns {PackageCveMap} {'foo': ['CVE-2021-21291', 'CVE-2021-21292'], 'bar': []}
+ */
+function parseIgnorePackages(input) {
+    const packages = input.split(',').map((p) => p.trim());
+    return packages.reduce((acc, packageCve) => {
+        const [pkg, cve] = packageCve.split('#');
+        if (!acc[pkg])
+            acc[pkg] = [];
+        if (cve)
+            acc[pkg] = [...acc[pkg], cve];
+        return acc;
+    }, {});
+}
 //# sourceMappingURL=index.js.map
 
 /***/ }),
@@ -108397,7 +108520,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core_1 = __nccwpck_require__(7484);
 const github_1 = __nccwpck_require__(3228);
 const destinations_1 = __nccwpck_require__(9384);
-const fetch_alerts_1 = __nccwpck_require__(2382);
+const alerts_1 = __nccwpck_require__(9414);
+const input_parsers_1 = __nccwpck_require__(5980);
 async function run() {
     try {
         const token = (0, core_1.getInput)('token');
@@ -108420,16 +108544,17 @@ async function run() {
         const count = parseInt((0, core_1.getInput)('count'));
         const severity = (0, core_1.getInput)('severity');
         const ecosystem = (0, core_1.getInput)('ecosystem');
+        const ignorePackages = (0, input_parsers_1.parseIgnorePackages)((0, core_1.getInput)('ignore_packages'));
         let alerts = [];
         if (org) {
-            alerts = await (0, fetch_alerts_1.fetchOrgAlerts)(token, org, severity, ecosystem, count);
+            alerts = await (0, alerts_1.fetchOrgAlerts)(token, org, severity, ecosystem, ignorePackages, count);
         }
         else if (enterprise) {
-            alerts = await (0, fetch_alerts_1.fetchEnterpriseAlerts)(token, org, severity, ecosystem, count);
+            alerts = await (0, alerts_1.fetchEnterpriseAlerts)(token, org, severity, ecosystem, ignorePackages, count);
         }
         else {
             const { owner, repo } = github_1.context.repo;
-            alerts = await (0, fetch_alerts_1.fetchRepositoryAlerts)(token, repo, owner, severity, ecosystem, count);
+            alerts = await (0, alerts_1.fetchRepositoryAlerts)(token, repo, owner, severity, ecosystem, ignorePackages, count);
         }
         if (alerts.length > 0) {
             if (microsoftTeamsWebhookUrl) {
