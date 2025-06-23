@@ -15,8 +15,9 @@ import {
   fetchRepositoryAlerts,
   fetchOrgAlerts,
   fetchEnterpriseAlerts,
-} from './fetch-alerts'
+} from './alerts'
 import { Alert } from './entities'
+import { parseIgnorePackages } from './utils/input-parsers'
 
 async function run(): Promise<void> {
   try {
@@ -42,16 +43,25 @@ async function run(): Promise<void> {
     const count = parseInt(getInput('count'))
     const severity = getInput('severity')
     const ecosystem = getInput('ecosystem')
+    const ignorePackages = parseIgnorePackages(getInput('ignore_packages'))
 
     let alerts: Alert[] = []
     if (org) {
-      alerts = await fetchOrgAlerts(token, org, severity, ecosystem, count)
+      alerts = await fetchOrgAlerts(
+        token,
+        org,
+        severity,
+        ecosystem,
+        ignorePackages,
+        count,
+      )
     } else if (enterprise) {
       alerts = await fetchEnterpriseAlerts(
         token,
         org,
         severity,
         ecosystem,
+        ignorePackages,
         count,
       )
     } else {
@@ -62,6 +72,7 @@ async function run(): Promise<void> {
         owner,
         severity,
         ecosystem,
+        ignorePackages,
         count,
       )
     }
